@@ -30,6 +30,8 @@ class ReactiveEffect {
         let lasetEffect = activeEffect;
         try {
             activeEffect = this;
+            // 重新执行时清空上一次的依赖
+            preCleanEffect(this);
             return this.fn();
         } finally {
             activeEffect = lasetEffect;
@@ -37,14 +39,47 @@ class ReactiveEffect {
     }
 }
 
-export function trackEffect(effect: ReactiveEffect, dep: any) {
-    dep.set(effect, effect._trackId);
-    // dep与effect关联
-    effect.deps[effect._depsLength++] = dep;
+export function postCleanEffect(effect: ReactiveEffect) {
+    if (effect.deps.length > effect._depsLength) {
+        for (let i = effect._depsLength; i < effect.deps.length; i++) {
+            cleanDepEffect(effect.deps[i], effect);
+        }
+        effect.deps.length = effect._depsLength;
+    }
 }
+
+export function trackEffect(effect: ReactiveEffect, dep: any) {
+    // 第一版
+    // dep.set(effect, effect._trackId);
+    // // dep与effect关联
+    // effect.deps[effect._depsLength++] = dep;
+    // 第二版
+    if (dep.get(effect) !== effect._trackId) {
+        dep.set(effect, effect._trackId);
+
+        let oldDep = effect.deps[effect._depsLength];
+
+        if (oldDep != dep) {
+            if (oldDep) cleanDepEffect(oldDep, effect);
+            effect.deps[effect._depsLength++] = dep;
+        } else {
+            effect._depsLength++;
+        }
+    }
+}
+
+const cleanDepEffect = (dep: any, effect: ReactiveEffect) => {
+    dep.delete(effect);
+    if (dep.size === 0) dep.cleanup();
+};
 
 export function triggerEffects(dep: any) {
     for (const effct of dep.keys()) {
         if (effct.scheduler) effct.scheduler();
     }
+}
+
+export function preCleanEffect(effect: ReactiveEffect) {
+    effect._depsLength = 0;
+    effect._trackId++; // 每次执行+1 如果当前是同一个effect id就是相等的
 }

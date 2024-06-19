@@ -35,8 +35,6 @@ export function track(target: any, key: any) {
     }
     // 将当前effect放到dep中 后续根据值的变化触发dep中存放的effect
     trackEffect(activeEffect, dep);
-
-    console.log('depsMap', depsMap);
 }
 
 export function trigger(target: any, key: any, value: any, oldValue: any) {
