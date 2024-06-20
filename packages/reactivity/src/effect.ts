@@ -28,6 +28,8 @@ class ReactiveEffect {
     // deps
     deps: any = [];
     _depsLength = 0;
+    // 是否正在执行
+    _running = 0;
     constructor(public fn: () => any, public scheduler: any) {
         this.fn = fn;
         this.scheduler = scheduler;
@@ -42,8 +44,13 @@ class ReactiveEffect {
             activeEffect = this;
             // 重新执行时清空上一次的依赖
             preCleanEffect(this);
+            // 运行值每次运行就++
+            this._running++;
             return this.fn();
         } finally {
+            // 每次执行完毕都清空
+            this._running--;
+            postCleanEffect(this);
             activeEffect = lasetEffect;
         }
     }
@@ -85,7 +92,10 @@ const cleanDepEffect = (dep: any, effect: ReactiveEffect) => {
 
 export function triggerEffects(dep: any) {
     for (const effct of dep.keys()) {
-        if (effct.scheduler) effct.scheduler();
+        if (effct.scheduler) {
+            // 如果没有正在运行就运行
+            if (!effct._running) effct.scheduler();
+        }
     }
 }
 
