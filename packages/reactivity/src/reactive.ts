@@ -22,3 +22,7 @@ export function createReactiveObject(target: any) {
     // 6.返回代理后的对象
     return proxy;
 }
+
+export function toReactive<T extends object>(value: T) {
+    return isObject(value) ? reactive(value) : value;
+}
