@@ -1,11 +1,21 @@
-export function effect(fn: () => any, options?: any) {
+export function effect(fn: () => void, options?: any) {
     const _effect = new ReactiveEffect(fn, () => {
         _effect.run();
     });
 
     _effect.run();
 
-    return _effect;
+    if (options) {
+        Object.assign(_effect, options); //用户传递的覆盖掉内置的
+    }
+
+    const runner = _effect.run.bind(_effect) as any;
+
+    runner.effect = _effect as any; // 可以在run方法中拿到effect
+
+    // return _effect;
+
+    return runner; // 外界可以自己调用run方法进行渲染
 }
 
 export let activeEffect: any;
