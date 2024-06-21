@@ -46,3 +46,12 @@ export function createReactiveObject(target: any) {
 export function toReactive<T extends object>(value: T) {
     return isObject(value) ? reactive(value) : value;
 }
+
+/**
+ *  检测是否为响应式对象
+ * @param value 值
+ * @returns
+ */
+export function isReactive(value: any) {
+    return !!(value && value[ReactiveFlags.IS_REACTIVE]);
+}
