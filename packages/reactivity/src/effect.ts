@@ -1,25 +1,43 @@
+/**
+ *  effect副作用函数
+ * @param fn 传递函数
+ * @param options 配置项
+ * @returns 返回更新函数
+ */
 export function effect(fn: () => void, options?: any) {
+    // 1.构建effect类
     const _effect = new ReactiveEffect(fn, () => {
         _effect.run();
     });
 
+    // 2.调用effect类的run方法
     _effect.run();
 
+    // 3.如果用户传递配置项就将用户传递的覆盖掉内置的
     if (options) {
         Object.assign(_effect, options); //用户传递的覆盖掉内置的
     }
 
+    // 4.返回run方法
     const runner = _effect.run.bind(_effect) as any;
 
+    // 5.将runner的effect属性指向_effect
     runner.effect = _effect as any; // 可以在run方法中拿到effect
 
     // return _effect;
 
+    // 6.返回run方法
     return runner; // 外界可以自己调用run方法进行渲染
 }
 
+/**
+ * 全局effect对象
+ */
 export let activeEffect: any;
 
+/**
+ * 全局Effect对象
+ */
 class ReactiveEffect {
     // 是否为响应式
     active = true;
@@ -103,3 +121,9 @@ export function preCleanEffect(effect: ReactiveEffect) {
     effect._depsLength = 0;
     effect._trackId++; // 每次执行+1 如果当前是同一个effect id就是相等的
 }
+
+function sum(a: number, b: number) {
+    return a + b;
+}
+
+const a = sum(1, 2);

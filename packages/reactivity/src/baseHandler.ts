@@ -6,6 +6,9 @@ export enum ReactiveFlags {
     IS_REACTIVE = '__v_isReactive',
 }
 
+/**
+ * 响应式对象get与set
+ */
 export const mutableHandlers: ProxyHandler<any> = {
     get(target, key, receiver) {
         if (key === ReactiveFlags.IS_REACTIVE) {
