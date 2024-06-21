@@ -1,3 +1,5 @@
+import { DirtyLevels } from './constants';
+
 /**
  *  effect副作用函数
  * @param fn 传递函数
@@ -38,7 +40,7 @@ export let activeEffect: any;
 /**
  * 全局Effect对象
  */
-class ReactiveEffect {
+export class ReactiveEffect {
     // 是否为响应式
     active = true;
     // 记录当前effect执行次数
@@ -48,12 +50,24 @@ class ReactiveEffect {
     _depsLength = 0;
     // 是否正在执行
     _running = 0;
+    // 是否是脏值 默认脏值
+    _dirtyLevel = DirtyLevels.Dirty;
     constructor(public fn: () => any, public scheduler: any) {
         this.fn = fn;
         this.scheduler = scheduler;
     }
 
+    public get dirty() {
+        return this._dirtyLevel === DirtyLevels.Dirty;
+    }
+
+    public set dirty(value) {
+        this._dirtyLevel = value ? DirtyLevels.Dirty : DirtyLevels.NoDirty;
+    }
+
     run() {
+        // 每次运行后此值为不脏
+        this._dirtyLevel = DirtyLevels.NoDirty;
         // 如果不是响应式直接执行
         if (!this.active) return this.fn();
         // 如果是响应式需要执行依赖收集
@@ -74,6 +88,10 @@ class ReactiveEffect {
     }
 }
 
+/**
+ *  后置处理 主要解决之前dep与现在dep个数不一致的问题
+ * @param effect effect对象
+ */
 export function postCleanEffect(effect: ReactiveEffect) {
     if (effect.deps.length > effect._depsLength) {
         for (let i = effect._depsLength; i < effect.deps.length; i++) {
@@ -83,6 +101,11 @@ export function postCleanEffect(effect: ReactiveEffect) {
     }
 }
 
+/**
+ *  effect与dep关联
+ * @param effect effect实例
+ * @param dep 依赖
+ */
 export function trackEffect(effect: ReactiveEffect, dep: any) {
     // 第一版
     // dep.set(effect, effect._trackId);
@@ -103,13 +126,26 @@ export function trackEffect(effect: ReactiveEffect, dep: any) {
     }
 }
 
+/**
+ * 清除dep与effect的关联
+ * @param dep 依赖
+ * @param effect effect实例对象
+ */
 const cleanDepEffect = (dep: any, effect: ReactiveEffect) => {
     dep.delete(effect);
     if (dep.size === 0) dep.cleanup();
 };
 
+/**
+ * 触发依赖中effect
+ * @param dep 依赖
+ */
 export function triggerEffects(dep: any) {
     for (const effct of dep.keys()) {
+        // 如果这个值不脏 但是触发更新需要将脏值标记为脏值
+        if (effct._dirtyLevel < DirtyLevels.Dirty) {
+            effct._dirtyLevel = DirtyLevels.Dirty;
+        }
         if (effct.scheduler) {
             // 如果没有正在运行就运行
             if (!effct._running) effct.scheduler();
@@ -117,13 +153,11 @@ export function triggerEffects(dep: any) {
     }
 }
 
+/**
+ * 前置处理
+ * @param effect effect实例
+ */
 export function preCleanEffect(effect: ReactiveEffect) {
     effect._depsLength = 0;
     effect._trackId++; // 每次执行+1 如果当前是同一个effect id就是相等的
 }
-
-function sum(a: number, b: number) {
-    return a + b;
-}
-
-const a = sum(1, 2);

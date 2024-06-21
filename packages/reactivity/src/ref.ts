@@ -2,14 +2,29 @@ import { activeEffect, trackEffect, triggerEffects } from './effect';
 import { toReactive } from './reactive';
 import { createDep } from './reactiveEffect';
 
+/**
+ *  ref函数
+ * @param value 传入的值
+ * @returns
+ */
 export function ref(value: any) {
     return createRef(value);
 }
 
+/**
+ *  构建ref响应式对象
+ * @param value 传入的值
+ * @returns
+ */
 export function createRef(value: any) {
     return new RefImpl(value);
 }
 
+/**
+ * Ref实现类
+ * 重点: 通过toReactive转换 判断值是否为对象 如果是对象需要进行代理
+ * 实现get与set
+ */
 class RefImpl {
     // 增加ref标识
     __v_isRef = true;
@@ -22,6 +37,7 @@ class RefImpl {
         this._value = toReactive(rawValue);
     }
     get value() {
+        // 获取值收集依赖
         trackRefValue(this);
         return this._value;
     }
@@ -29,12 +45,17 @@ class RefImpl {
         if (v !== this.rawValue) {
             this.rawValue = v;
             this._value = v;
+            // 触发依赖更新
             triggerRefValue(this);
         }
     }
 }
 
-function trackRefValue(ref: RefImpl) {
+/**
+ *  收集依赖
+ * @param ref ref实例
+ */
+export function trackRefValue(ref: any) {
     if (activeEffect) {
         trackEffect(
             activeEffect,
@@ -43,18 +64,32 @@ function trackRefValue(ref: RefImpl) {
     }
 }
 
-function triggerRefValue(ref: RefImpl) {
+/**
+ *  触发依赖更新
+ * @param ref ref实例
+ */
+export function triggerRefValue(ref: any) {
     let dep = ref.dep;
     if (dep) {
         triggerEffects(dep);
     }
 }
 
-// toRef toRefs
+/**
+ *  toRef
+ * @param object 对象
+ * @param key 键
+ * @returns
+ */
 export function toRef(object: any, key: any) {
     return new ObjectRefImpl(object, key);
 }
 
+/**
+ *  toRefs
+ * @param object 对象
+ * @returns
+ */
 export function toRefs(object: any) {
     const res = {} as any;
     for (const key in object) {
@@ -63,10 +98,16 @@ export function toRefs(object: any) {
     return res;
 }
 
+/**
+ * proxyRefs
+ * @param objectWithRef 对象
+ * @returns
+ */
 export function proxyRefs(objectWithRef: any) {
     return new Proxy(objectWithRef, {
         get(target, key, receiver) {
             let res = Reflect.get(target, key, receiver);
+
             return res.__v_isRef ? res.value : res; // 如果是ref 就返回.value 自动脱ref
         },
         set(target, key, value, receiver) {
@@ -82,6 +123,9 @@ export function proxyRefs(objectWithRef: any) {
     });
 }
 
+/**
+ * 转为Ref实例对象
+ */
 class ObjectRefImpl {
     // 增加ref标识
     __v_isRef = true;

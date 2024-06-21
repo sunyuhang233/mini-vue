@@ -1,10 +1,7 @@
 import { isObject } from '@vue/shared';
 import { track, trigger } from './reactiveEffect';
 import { reactive } from './reactive';
-
-export enum ReactiveFlags {
-    IS_REACTIVE = '__v_isReactive',
-}
+import { ReactiveFlags } from './constants';
 
 /**
  * 响应式对象get与set
