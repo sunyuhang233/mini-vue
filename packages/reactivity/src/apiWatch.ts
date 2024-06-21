@@ -1,6 +1,7 @@
-import { isObject } from '@vue/shared';
+import { isFunction, isObject } from '@vue/shared';
 import { ReactiveEffect } from './effect';
 import { isReactive } from './reactive';
+import { isRef } from './ref';
 
 /**
  *  watch函数
@@ -9,13 +10,13 @@ import { isReactive } from './reactive';
  * @param options 配置选项
  * @returns
  */
-export function watch(
-    source: any,
-    cb: (newValue?: any, oldValue?: any) => void,
-    options = {} as any
-) {
+export function watch(source: any, cb: any, options = {} as any) {
     // watchEffect也是基于doWatch来实现的
     return doWatch(source, cb, options);
+}
+
+export function watchEffect(effect: any, options = {} as any) {
+    doWatch(effect, null, options);
 }
 
 /**
@@ -24,31 +25,52 @@ export function watch(
  * @param cb 回调函数
  * @param deep 是否开启深层监听
  */
-function doWatch(
-    source: any,
-    cb: (newValue?: any, oldValue?: any) => void,
-    { deep }: any
-) {
+function doWatch(source: any, cb: any, { deep, immediate }: any) {
     // source => getter
     const reactiveGetter = (source: any) =>
         traverse(source, deep === false ? 1 : undefined);
     let getter: any;
     // 产生一个可以给ReactiveEffect来使用的getter 需要对这个对象进行取值操作 会关联当前的reactiveEffect
     if (isReactive(source)) {
+        // reactiveGetter相当于是一个getter 负责取值
         getter = () => reactiveGetter(source);
+    }
+
+    // 判断是否为Ref
+    if (isRef(source)) {
+        getter = () => source.value;
+    }
+
+    // 判断是否为函数
+    if (isFunction(source)) {
+        getter = source;
     }
 
     let oldValue: any;
 
     const job = () => {
-        const newValue = effect.run();
-        cb(newValue, oldValue);
-        oldValue = newValue;
+        if (cb) {
+            const newValue = effect.run();
+            cb(newValue, oldValue);
+            oldValue = newValue;
+        } else {
+            effect.run(); //watchEffect只需要用户传递一个回调函数 就可以实现一次监听
+        }
     };
 
     const effect = new ReactiveEffect(getter, job);
 
-    oldValue = effect.run();
+    if (cb) {
+        // 立即执行一次用户传进来的回调函数 传递新增和老值
+        if (immediate) {
+            job();
+        } else {
+            oldValue = effect.run();
+        }
+    } else {
+        // watchEffect只需要用户传递一个回调函数 就可以实现一次监听
+        effect.run();
+    }
 }
 
 /**

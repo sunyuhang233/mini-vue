@@ -139,3 +139,12 @@ class ObjectRefImpl {
         this._object[this._key] = newValue;
     }
 }
+
+/**
+ *  判断是否为ref
+ * @param value 传入的值
+ * @returns
+ */
+export function isRef(value: any) {
+    return !!(value && value.__v_isRef);
+}
